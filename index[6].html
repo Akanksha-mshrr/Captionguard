@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CaptionGuard - check captions before you publish</title>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --text:#1c1f2a; --muted:#5c6377; --line:#e1e4ee; --accent:#4f46e5;
+          --high:#dc2626; --medium:#d97706; --low:#2563eb; --ok:#16a34a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12141c; --card:#1b1e2a; --text:#eceef6; --muted:#a3aac0; --line:#2c3042; --accent:#818cf8; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { margin:0 0 4px; font-size:28px; }
+  h3 { margin:16px 0 6px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  label { font-weight:600; display:block; margin-bottom:4px; font-size:14px; }
+  textarea, input[type=text] { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; background:var(--bg); color:var(--text); }
+  textarea { min-height:110px; resize:vertical; }
+  textarea.small { min-height:84px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:center; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
+  button, .btn { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--text); padding:8px 12px; border-radius:8px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .muted { color:var(--muted); font-size:14px; }
+  .score { display:flex; align-items:center; gap:12px; }
+  .badge { font-size:30px; font-weight:700; }
+  .pill { padding:2px 10px; border-radius:999px; font-size:13px; font-weight:600; color:#fff; }
+  .pill.high { background:var(--high); } .pill.medium { background:var(--medium); } .pill.low { background:var(--low); } .pill.clean { background:var(--ok); }
+  mark { padding:1px 3px; border-radius:4px; color:#111; }
+  mark.high { background:#fecaca; } mark.medium { background:#fde68a; } mark.low { background:#bfdbfe; }
+  .finding { border-left:4px solid var(--line); padding:6px 12px; margin:10px 0; }
+  .finding.high { border-color:var(--high); } .finding.medium { border-color:var(--medium); } .finding.low { border-color:var(--low); }
+  .finding b { font-size:14px; }
+  #caption-out { white-space:pre-wrap; }
+  details summary { cursor:pointer; font-weight:600; }
+  #msg { margin-top:10px; font-size:14px; min-height:1.4em; }
+  #msg.err { color:var(--high); } #msg.ok { color:var(--ok); }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; overflow-x:auto; font-size:13px; margin:8px 0; }
+  a { color:var(--accent); }
+  footer { color:var(--muted); font-size:13px; text-align:center; margin-top:24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CaptionGuard</h1>
+  <p class="sub">Paste a caption. Get every brand-rule problem flagged <em>before</em> you publish. Use the sample rules, or set your own below.</p>
+
+  <div class="card">
+    <label for="caption">Your caption</label>
+    <textarea id="caption" placeholder="e.g. Cheapest phone ever! 50% off, only today at ₹5,999. 100% guaranteed!"></textarea>
+    <div class="row">
+      <button class="primary" id="check">Check caption</button>
+      <span class="muted">Try a sample (for the ABC Electronics rules):</span>
+      <button data-sample="0">Risky</button>
+      <button data-sample="1">Clean</button>
+      <button data-sample="2">Valid offer</button>
+    </div>
+  </div>
+
+  <div class="card" id="result" hidden>
+    <div class="score">
+      <span class="badge" id="score">0</span>
+      <div><span class="pill" id="level"></span><div class="muted">Risk score (0 = clean, 100 = very risky)</div></div>
+    </div>
+    <p class="muted" id="used"></p>
+    <h3>Your caption, marked</h3>
+    <div id="caption-out"></div>
+    <h3>Findings</h3>
+    <div id="findings"></div>
+  </div>
+
+  <div class="card">
+    <details id="rules-box" open>
+      <summary>Brand rules (change them or upload your own)</summary>
+      <p class="muted">Every brand has different rules. Edit the boxes, or upload a rules file (.txt or .json). Leave a box empty to switch that rule off.</p>
+      <div class="grid">
+        <div><label for="r-brand">Brand name</label><input type="text" id="r-brand"></div>
+        <div><label for="r-prices">Approved price(s), separated by commas</label><input type="text" id="r-prices" placeholder="e.g. 6999, 7499"></div>
+        <div><label for="r-disc">Maximum discount (%)</label><input type="text" id="r-disc" inputmode="numeric" placeholder="e.g. 30"></div>
+        <div><label for="r-disclaimer">Offers must include this text</label><input type="text" id="r-disclaimer" placeholder="e.g. T&amp;C apply"></div>
+      </div>
+      <div class="grid">
+        <div><label for="r-banned">Banned words (one per line)</label><textarea id="r-banned" class="small"></textarea></div>
+        <div><label for="r-super">Unproven superlatives (one per line)</label><textarea id="r-super" class="small"></textarea></div>
+        <div><label for="r-guar">Absolute guarantees (one per line)</label><textarea id="r-guar" class="small"></textarea></div>
+        <div><label for="r-urgent">Urgency words (one per line)</label><textarea id="r-urgent" class="small"></textarea></div>
+      </div>
+      <div class="row">
+        <button id="save">Save rules in this browser</button>
+        <button id="download">Download rules file</button>
+        <button id="upload">Upload rules file</button>
+        <button id="reset">Reset to sample rules</button>
+        <input type="file" id="file" hidden>
+      </div>
+      <div id="msg" role="status" aria-live="polite"></div>
+      <details style="margin-top:10px">
+        <summary>Rules file format (what the upload accepts)</summary>
+        <p class="muted">A plain text file with one setting per line. Lines starting with # are ignored. You can include only the settings you want to change. A .json file with the same names also works.</p>
+<pre>brand: Fresh Bites Bakery
+price: 499, 799
+max discount: 20
+disclaimer: While stocks last
+banned: stale, leftover
+superlatives: tastiest, best
+guarantees: 100% fresh
+urgency: hurry, last chance</pre>
+        <p class="muted"><a href="sample_rules.txt" download>Download sample_rules.txt</a> and edit it, or use "Download rules file" above to get your current rules in this format.</p>
+      </details>
+    </details>
+  </div>
+
+  <footer>CaptionGuard v2.0 · rules run in your browser · nothing is uploaded or stored on any server.</footer>
+</main>
+
+<script src="checker.js"></script>
+<script>
+  const SAMPLES = [
+    "Cheapest phone ever! Flat 50% off, only today at ₹5,999. 100% guaranteed!",
+    "Meet the ABC Phone X at ₹6,999. Smooth performance for everyday use.",
+    "Enjoy 20% off on the ABC Phone X, now ₹6,999. T&C apply."
+  ];
+  const CG = CaptionGuard;
+  const STORE_KEY = "captionguard.rules.v1";
+  const $ = (id) => document.getElementById(id);
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  /* ---- rules form ---- */
+  function fillForm(r) {
+    $("r-brand").value = r.brand;
+    $("r-prices").value = r.approvedPrices.join(", ");
+    $("r-disc").value = r.maxDiscount === null ? "" : r.maxDiscount;
+    $("r-disclaimer").value = r.disclaimer;
+    $("r-banned").value = r.banned.join("\n");
+    $("r-super").value = r.superlatives.join("\n");
+    $("r-guar").value = r.guarantees.join("\n");
+    $("r-urgent").value = r.urgency.join("\n");
+  }
+  function readForm() {
+    return CG.normalizeRules({
+      brand: $("r-brand").value,
+      approvedPrices: $("r-prices").value,
+      maxDiscount: $("r-disc").value,
+      disclaimer: $("r-disclaimer").value,
+      banned: $("r-banned").value,
+      superlatives: $("r-super").value,
+      guarantees: $("r-guar").value,
+      urgency: $("r-urgent").value
+    });
+  }
+  function say(text, kind) { const m = $("msg"); m.textContent = text; m.className = kind || ""; }
+
+  let start = CG.normalizeRules(CG.DEFAULT_RULES);
+  try {
+    const saved = localStorage.getItem(STORE_KEY);
+    if (saved) start = CG.normalizeRules(JSON.parse(saved));
+  } catch (e) { /* storage blocked or empty: use sample rules */ }
+  fillForm(start);
+
+  $("save").addEventListener("click", () => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(readForm())); say("Rules saved in this browser.", "ok"); }
+    catch (e) { say("Could not save here (browser storage is blocked). Use 'Download rules file' instead.", "err"); }
+  });
+  $("reset").addEventListener("click", () => {
+    fillForm(CG.normalizeRules(CG.DEFAULT_RULES));
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    say("Sample rules restored.", "ok");
+  });
+  $("download").addEventListener("click", () => {
+    const blob = new Blob([CG.rulesToText(readForm())], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "captionguard-rules.txt";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $("upload").addEventListener("click", () => $("file").click());
+  $("file").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 100 * 1024) { say("File is too big (limit 100 KB).", "err"); return; }
+    const reader = new FileReader();
+    reader.onerror = () => say("Could not read that file.", "err");
+    reader.onload = () => {
+      try {
+        let partial, count;
+        if (/\.json$/i.test(file.name)) {
+          partial = JSON.parse(reader.result);
+          if (!partial || typeof partial !== "object" || Array.isArray(partial)) throw new Error("bad json");
+          count = Object.keys(partial).length;
+        } else {
+          const p = CG.parseRulesText(reader.result);
+          partial = p.partial; count = p.recognized;
+        }
+        if (!count) { say("No rules found in that file. It must be a plain text (.txt) or .json file with lines like  price: 499  or  banned: cheap, scam. See 'Rules file format' below.", "err"); return; }
+        fillForm(CG.normalizeRules(Object.assign({}, readForm(), partial)));
+        say("Loaded " + count + " setting(s) from " + file.name + ". Click 'Check caption' to use them, or 'Save rules' to keep them.", "ok");
+      } catch (err) {
+        say("That file could not be read. Use a plain text (.txt) or valid .json file. See 'Rules file format' below.", "err");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  /* ---- checking ---- */
+  function run() {
+    const text = $("caption").value;
+    if (!text.trim()) { $("caption").focus(); return; }
+    const rules = readForm();
+    const res = CG.checkCaption(text, rules);
+
+    let html = "", pos = 0;
+    res.findings.filter((x) => x.start >= 0).forEach((x) => {
+      html += esc(text.slice(pos, x.start)) + '<mark class="' + x.severity + '">' + esc(text.slice(x.start, x.end)) + "</mark>";
+      pos = x.end;
+    });
+    html += esc(text.slice(pos));
+    $("caption-out").innerHTML = html;
+
+    $("score").textContent = res.score;
+    $("level").textContent = res.level === "clean" ? "Clean" : res.level.toUpperCase();
+    $("level").className = "pill " + res.level;
+    $("used").textContent = "Checked against the rules for: " + rules.brand;
+
+    $("findings").innerHTML = res.findings.length
+      ? res.findings.map((x) =>
+          '<div class="finding ' + x.severity + '"><b>' + x.rule + " · " + x.severity + "</b>" +
+          (x.match ? ' · "' + esc(x.match) + '"' : "") +
+          "<div>" + esc(x.message) + '</div><div class="muted">Fix: ' + esc(x.fix) + "</div></div>").join("")
+      : '<p class="muted">No problems found. Good to publish (a human should still review).</p>';
+
+    $("result").hidden = false;
+    $("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  $("check").addEventListener("click", run);
+  document.querySelectorAll("[data-sample]").forEach((b) =>
+    b.addEventListener("click", () => { $("caption").value = SAMPLES[b.dataset.sample]; run(); }));
+</script>
+</body>
+</html>
