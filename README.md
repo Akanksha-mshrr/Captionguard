@@ -8,6 +8,8 @@ Dummy project for Round 3 (theme: brand governance). Demo brand: fictional *ABC 
 
 **Team:** Bug Hunters, IIT Patna · **Author:** Akanksha Mishra
 
+**Final report:** [CaptionGuard_Final_Report.pdf](CaptionGuard_Final_Report.pdf)
+
 ## Quick start (3 commands)
 
 ```bash
