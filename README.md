@@ -4,14 +4,15 @@ A tiny brand-governance tool: paste a caption and CaptionGuard flags wrong price
 
 Dummy project for Round 3 (theme: brand governance). Demo brand: fictional *ABC Electronics*.
 
-**Live link:** `https://<your-github-username>.github.io/captionguard/`
-**Team:** Bug Hunters, IIT Patna · **Author:** `<your name>`
+**Live link:** https://akanksha-mshrr.github.io/Captionguard/  
+
+**Team:** Bug Hunters, IIT Patna · **Author:** Akanksha Mishra
 
 ## Quick start (3 commands)
 
 ```bash
-git clone https://github.com/<your-github-username>/captionguard.git
-cd captionguard
+git clone https://github.com/akanksha-mshrr/Captionguard.git
+cd Captionguard
 python -m http.server 8000     # then open http://localhost:8000
 ```
 
