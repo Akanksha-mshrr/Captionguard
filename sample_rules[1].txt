@@ -1,0 +1,9 @@
+# Sample rules file for a different brand. Upload it with "Upload rules file".
+brand: Fresh Bites Bakery
+price: 499, 799
+max discount: 20
+disclaimer: While stocks last
+banned: stale, leftover, cheap
+superlatives: tastiest, best, #1
+guarantees: 100% fresh, guaranteed
+urgency: hurry, last chance, only today
